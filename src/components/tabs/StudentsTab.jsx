@@ -7,8 +7,7 @@ import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import Modal from '../common/Modal';
 import ConfirmDialog from '../common/ConfirmDialog';
-import { parsePastedStudentList, fileToBase64, todayISO, GROUP_COLORS } from '../../utils/helpers';
-
+import { parsePastedStudentList, resizeImageFile, todayISO, GROUP_COLORS } from '../../utils/helpers';
 const GROUPS = ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'];
 
 export default function StudentsTab() {
@@ -48,12 +47,12 @@ export default function StudentsTab() {
     setShowAddModal(true);
   };
 
-  const handleAvatarPick = async (e, callback) => {
+    const handleAvatarPick = async (e, callback) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const base64 = await fileToBase64(file);
-    callback(base64);
-  };
+    const resized = await resizeImageFile(file, 300, 0.75);
+    callback(resized);
+    };
 
   const handleSubmitAdd = async (e) => {
     e.preventDefault();

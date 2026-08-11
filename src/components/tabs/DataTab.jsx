@@ -96,9 +96,10 @@ export default function DataTab() {
         <div className="text-sm text-amber-700">
           <p className="font-bold mb-1">Lưu ý an toàn thông tin</p>
           <p>
-            Dữ liệu học sinh (họ tên, hình ảnh, kết quả học tập) là thông tin cá nhân cần được bảo mật.
-            Vui lòng không chia sẻ file sao lưu (.json) hoặc file báo cáo (.csv) cho người không có trách nhiệm.
-            Khi dùng chế độ Ngoại tuyến, dữ liệu chỉ lưu trên trình duyệt của máy tính này — hãy sao lưu định kỳ để tránh mất dữ liệu.
+            Dữ liệu học sinh (họ tên, hình ảnh, kết quả học tập) được lưu trên Firestore (Google Cloud)
+            và hiển thị theo thời gian thực cho bất kỳ ai truy cập trang web này.
+            Vui lòng không chia sẻ đường link web hoặc file sao lưu (.json) cho người không có trách nhiệm,
+            và nên sao lưu định kỳ để phòng trường hợp thao tác nhầm hoặc mất kết nối mạng.
           </p>
         </div>
       </Card>
@@ -233,7 +234,7 @@ export default function DataTab() {
         onClose={() => setShowClearConfirm(false)}
         onConfirm={() => clearAllData()}
         title="Xoá toàn bộ dữ liệu"
-        message="Hành động này sẽ xoá vĩnh viễn toàn bộ dữ liệu học sinh, điểm danh, thi đua... Bạn có chắc chắn không?"
+        message="Hành động này sẽ xoá vĩnh viễn toàn bộ dữ liệu học sinh, điểm danh, thi đua... trên Firestore. Bạn có chắc chắn không?"
         confirmText="Xoá toàn bộ"
         danger
       />

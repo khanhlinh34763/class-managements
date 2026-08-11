@@ -2,9 +2,8 @@ import React, {
   createContext, useContext, useEffect, useState, useCallback, useMemo,
 } from 'react';
 import {
-  getAppMode, setAppMode as persistAppMode, isOnlineAvailable,
   subscribe, saveItem, saveMany, removeItem, uploadAvatar, deleteAvatar,
-  exportAllLocalData, importAllData, replaceAll, getAll,
+  importAllData, replaceAll, getAll,
 } from '../services/storage';
 import {
   generateId, shuffleArray, todayISO, getWeekKey,
@@ -13,11 +12,11 @@ import {
 const AppDataContext = createContext(null);
 
 export const COLLECTIONS = [
-  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations',
+  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations', 'settings',
 ];
 
 const DEFAULT_SETTINGS = {
-  className: 'Lớp 3A',
+  className: 'Lớp 5/2',
   teacherName: 'Cô Linh',
   schoolYear: '2026 - 2027',
   subjects: [
@@ -27,7 +26,6 @@ const DEFAULT_SETTINGS = {
 };
 
 export function AppDataProvider({ children }) {
-  const [mode, setModeState] = useState(getAppMode());
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [emulation, setEmulation] = useState([]);
@@ -35,18 +33,10 @@ export function AppDataProvider({ children }) {
   const [quizzes, setQuizzes] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
-  const [settings, setSettings] = useState(() => {
-    const raw = localStorage.getItem('lophoc_settings');
-    return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
-  });
-  const [loading, setLoading] = useState(true);
+  const [settingsDoc, setSettingsDoc] = useState(null);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem('lophoc_settings', JSON.stringify(settings));
-  }, [settings]);
-
-  useEffect(() => {
-    setLoading(true);
     const unsubs = [
       subscribe('students', setStudents),
       subscribe('attendance', setAttendance),
@@ -55,14 +45,24 @@ export function AppDataProvider({ children }) {
       subscribe('quizzes', setQuizzes),
       subscribe('quizResults', setQuizResults),
       subscribe('evaluations', setEvaluations),
+      subscribe('settings', (docsArr) => {
+        setSettingsDoc(docsArr.find((d) => d.id === 'main') || null);
+        setSettingsLoaded(true);
+      }),
     ];
-    setLoading(false);
     return () => unsubs.forEach((unsub) => unsub && unsub());
-  }, [mode]);
+  }, []);
 
-  const changeMode = useCallback((newMode) => {
-    persistAppMode(newMode);
-    setModeState(newMode);
+  useEffect(() => {
+    if (settingsLoaded && !settingsDoc) {
+      saveItem('settings', 'main', DEFAULT_SETTINGS);
+    }
+  }, [settingsLoaded, settingsDoc]);
+
+  const settings = settingsDoc ? { ...DEFAULT_SETTINGS, ...settingsDoc } : DEFAULT_SETTINGS;
+
+  const updateSettings = useCallback(async (newSettings) => {
+    await saveItem('settings', 'main', newSettings);
   }, []);
 
   const addStudent = useCallback(async (studentData) => {
@@ -264,22 +264,14 @@ export function AppDataProvider({ children }) {
 
   const backupAllData = useCallback(async () => {
     const result = {};
-    if (mode === 'online') {
-      for (const name of COLLECTIONS) {
-        result[name] = await getAll(name);
-      }
-    } else {
-      Object.assign(result, exportAllLocalData(COLLECTIONS));
+    for (const name of COLLECTIONS) {
+      result[name] = await getAll(name);
     }
-    result.settings = settings;
     return result;
-  }, [mode, settings]);
+  }, []);
 
   const restoreAllData = useCallback(async (dataObject) => {
     await importAllData(COLLECTIONS, dataObject);
-    if (dataObject.settings) {
-      setSettings({ ...DEFAULT_SETTINGS, ...dataObject.settings });
-    }
   }, []);
 
   const clearAllData = useCallback(async () => {
@@ -289,8 +281,7 @@ export function AppDataProvider({ children }) {
   }, []);
 
   const value = useMemo(() => ({
-    mode, changeMode, isOnlineAvailable: isOnlineAvailable(),
-    loading,
+    loading: !settingsLoaded,
     students, addStudent, addStudentsBulk, updateStudent, deleteStudent, setStudentAvatar,
     attendance, getAttendanceForDate, setAttendanceRecord, setBulkNote, markAllPresent,
     emulation, addEmulationPoint, deleteEmulationPoint, getWeeklyRanking, getGroupRanking,
@@ -298,17 +289,17 @@ export function AppDataProvider({ children }) {
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
-    settings, setSettings,
+    settings, updateSettings,
     backupAllData, restoreAllData, clearAllData,
   }), [
-    mode, changeMode, loading, students, addStudent, addStudentsBulk, updateStudent, deleteStudent, setStudentAvatar,
+    settingsLoaded, students, addStudent, addStudentsBulk, updateStudent, deleteStudent, setStudentAvatar,
     attendance, getAttendanceForDate, setAttendanceRecord, setBulkNote, markAllPresent,
     emulation, addEmulationPoint, deleteEmulationPoint, getWeeklyRanking, getGroupRanking,
     dutyState, assignDutyForDate, rerollDutyForDate,
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
-    settings, backupAllData, restoreAllData, clearAllData,
+    settings, updateSettings, backupAllData, restoreAllData, clearAllData,
   ]);
 
   return <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>;
