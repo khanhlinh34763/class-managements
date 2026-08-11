@@ -10,7 +10,7 @@ export default function Modal({ isOpen, onClose, title, children, maxWidth = 'ma
         onClick={onClose}
       />
       <div className={`relative w-full ${maxWidth} bg-white rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto`}>
-        <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b-2 border-blue-100 rounded-t-3xl">
+        <div className="sticky top-0 bg-white flex items-center justify-between px-6 py-4 border-b-2 border-pink-100 rounded-t-3xl">
           <h3 className="text-lg font-bold text-gray-800">{title}</h3>
           <button
             type="button"

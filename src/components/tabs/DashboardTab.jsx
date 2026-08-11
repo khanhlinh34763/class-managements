@@ -30,10 +30,10 @@ export default function DashboardTab() {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-gradient-to-r from-happy-blue to-blue-400 text-white flex items-center justify-between flex-wrap gap-3">
+      <Card className="bg-gradient-to-r from-happy-pink to-pink-400 text-white flex items-center justify-between flex-wrap gap-3">
         <div>
-          <p className="text-blue-100 font-medium">{formatDateVN(new Date())}</p>
-          <h2 className="text-2xl font-extrabold mt-1">Chào mừng cô Linh quay lại! 🌞</h2>
+          <p className="text-pink-100 font-medium">{formatDateVN(new Date())}</p>
+          <h2 className="text-2xl font-extrabold mt-1">Chào mừng cô Linh quay lại! 🌸</h2>
         </div>
       </Card>
 

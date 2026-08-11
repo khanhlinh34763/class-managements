@@ -1,13 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Shuffle, Play, Pause, RotateCcw, Timer, Users2 } from 'lucide-react';
+import { Shuffle, Play, Pause, RotateCcw, Timer, Users2, User, LayoutGrid } from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
 import { playTickSound, playBellSound, playDrumrollSound } from '../../utils/sound';
 import { fireBigConfetti } from '../../utils/confetti';
+import { GROUP_COLORS } from '../../utils/helpers';
+
+const GROUPS = Object.keys(GROUP_COLORS);
 
 function RandomPicker() {
   const { students } = useAppData();
+  const [mode, setMode] = useState('name');
   const [picked, setPicked] = useState(null);
   const [spinning, setSpinning] = useState(false);
   const [displayName, setDisplayName] = useState('');
@@ -15,7 +19,18 @@ function RandomPicker() {
   const [usedIds, setUsedIds] = useState([]);
   const intervalRef = useRef(null);
 
-  const pool = excludeUsed ? students.filter((s) => !usedIds.includes(s.id)) : students;
+  const items = mode === 'group'
+    ? GROUPS.map((g) => ({ id: g, name: g }))
+    : students;
+  const pool = excludeUsed ? items.filter((i) => !usedIds.includes(i.id)) : items;
+
+  const handleSwitchMode = (nextMode) => {
+    if (nextMode === mode || spinning) return;
+    setMode(nextMode);
+    setUsedIds([]);
+    setPicked(null);
+    setDisplayName('');
+  };
 
   const handleSpin = () => {
     if (pool.length === 0 || spinning) return;
@@ -49,19 +64,52 @@ function RandomPicker() {
     setDisplayName('');
   };
 
+  const pickedGroupMembers = mode === 'group' && picked
+    ? students.filter((s) => s.group === picked.name)
+    : [];
+
   return (
     <Card className="flex flex-col items-center gap-5 py-10">
       <div className="flex items-center gap-2 text-gray-700 font-bold text-lg">
-        <Users2 size={22} className="text-happy-pink" /> Gọi tên ngẫu nhiên
+        <Users2 size={22} className="text-happy-pink" /> Gọi ngẫu nhiên
       </div>
+
+      <div className="flex gap-2 bg-pink-50 p-1.5 rounded-2xl">
+        <button
+          type="button"
+          onClick={() => handleSwitchMode('name')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm transition-colors ${mode === 'name' ? 'bg-happy-pink text-white shadow' : 'text-gray-500'}`}
+        >
+          <User size={16} /> Theo học sinh
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSwitchMode('group')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-xl font-semibold text-sm transition-colors ${mode === 'group' ? 'bg-happy-pink text-white shadow' : 'text-gray-500'}`}
+        >
+          <LayoutGrid size={16} /> Theo tổ
+        </button>
+      </div>
+
       <div className="w-full max-w-sm h-40 rounded-3xl bg-gradient-to-br from-happy-pink to-pink-400 flex flex-col items-center justify-center shadow-xl">
-        {picked ? (
+        {picked && mode === 'name' ? (
           <Avatar name={picked.name} src={picked.avatar} size="xl" className="mb-2 border-4 border-white" />
         ) : null}
         <p className="text-white text-2xl font-extrabold px-4 text-center">
           {displayName || 'Bấm nút để bắt đầu'}
         </p>
       </div>
+
+      {pickedGroupMembers.length > 0 && (
+        <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+          {pickedGroupMembers.map((s) => (
+            <span key={s.id} className="flex items-center gap-1.5 bg-pink-50 text-gray-600 text-xs font-semibold px-3 py-1.5 rounded-full">
+              <Avatar name={s.name} src={s.avatar} size="sm" /> {s.name}
+            </span>
+          ))}
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <label className="flex items-center gap-2 text-sm font-semibold text-gray-500">
           <input
@@ -70,7 +118,7 @@ function RandomPicker() {
             onChange={(e) => setExcludeUsed(e.target.checked)}
             className="w-4 h-4 accent-happy-pink"
           />
-          Không gọi lại bạn đã gọi
+          {mode === 'group' ? 'Không gọi lại tổ đã gọi' : 'Không gọi lại bạn đã gọi'}
         </label>
       </div>
       <div className="flex gap-3">
@@ -91,7 +139,9 @@ function RandomPicker() {
         </button>
       </div>
       {excludeUsed && (
-        <p className="text-xs text-gray-400">Còn lại {pool.length}/{students.length} bạn chưa được gọi</p>
+        <p className="text-xs text-gray-400">
+          Còn lại {pool.length}/{items.length} {mode === 'group' ? 'tổ' : 'bạn'} chưa được gọi
+        </p>
       )}
     </Card>
   );
@@ -209,7 +259,7 @@ function CountdownTimer() {
             onClick={handleStart}
             className="flex items-center gap-2 bg-happy-blue text-white px-6 py-3 rounded-2xl font-bold hover:bg-blue-600"
           >
-            <Play size={18} /> Bắt đầu
+            <Play size={18} /> {remaining > 0 ? 'Tiếp tục' : 'Bắt đầu'}
           </button>
         ) : (
           <button

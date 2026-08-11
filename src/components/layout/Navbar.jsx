@@ -8,12 +8,12 @@ export default function Navbar({ activeTab, onOpenSidebar }) {
   const current = MENU_ITEMS.find((item) => item.key === activeTab);
 
   return (
-    <header className="bg-white border-b border-blue-50 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
+    <header className="bg-white border-b border-pink-100 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3">
         <button
           type="button"
           onClick={onOpenSidebar}
-          className="md:hidden p-2 rounded-xl hover:bg-blue-50"
+          className="md:hidden p-2 rounded-xl hover:bg-pink-50"
         >
           <Menu size={22} />
         </button>

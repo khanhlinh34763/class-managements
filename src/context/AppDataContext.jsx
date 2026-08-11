@@ -12,7 +12,7 @@ import {
 const AppDataContext = createContext(null);
 
 export const COLLECTIONS = [
-  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations', 'settings',
+  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations', 'settings', 'posts',
 ];
 
 const DEFAULT_SETTINGS = {
@@ -33,6 +33,7 @@ export function AppDataProvider({ children }) {
   const [quizzes, setQuizzes] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [posts, setPosts] = useState([]);
   const [settingsDoc, setSettingsDoc] = useState(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
 
@@ -45,6 +46,7 @@ export function AppDataProvider({ children }) {
       subscribe('quizzes', setQuizzes),
       subscribe('quizResults', setQuizResults),
       subscribe('evaluations', setEvaluations),
+      subscribe('posts', setPosts),
       subscribe('settings', (docsArr) => {
         setSettingsDoc(docsArr.find((d) => d.id === 'main') || null);
         setSettingsLoaded(true);
@@ -67,13 +69,16 @@ export function AppDataProvider({ children }) {
 
   const addStudent = useCallback(async (studentData) => {
     const id = generateId('hs');
-    await saveItem('students', id, {
+    const data = {
       name: studentData.name,
       group: studentData.group || 'Tổ 1',
       gender: studentData.gender || 'Nam',
       avatar: studentData.avatar || '',
       joinedAt: new Date().toISOString(),
-    });
+    };
+    if (studentData.username) data.username = studentData.username;
+    if (studentData.passwordHash) data.passwordHash = studentData.passwordHash;
+    await saveItem('students', id, data);
     return id;
   }, []);
 
@@ -190,16 +195,23 @@ export function AppDataProvider({ children }) {
   const dutyState = dutyDocs.find((d) => d.id === 'main') || { history: {}, queue: [], cycleNumber: 0 };
 
   const assignDutyForDate = useCallback(async (date) => {
-    if (dutyState.history && dutyState.history[date]) {
-      return dutyState.history[date];
+    const cached = dutyState.history && dutyState.history[date];
+    if (cached && cached.length > 0) {
+      return cached;
+    }
+    if (students.length === 0) {
+      return [];
     }
     let queue = [...(dutyState.queue || [])];
     let cycleNumber = dutyState.cycleNumber || 0;
-    if (queue.length < 4 && students.length > 0) {
-      queue = shuffleArray(students.map((s) => s.id));
+    const groupSize = Math.min(4, students.length);
+    if (queue.length < groupSize && students.length > 0) {
+      const freshShuffle = shuffleArray(
+        students.map((s) => s.id).filter((id) => !queue.includes(id)),
+      );
+      queue = [...queue, ...freshShuffle];
       cycleNumber += 1;
     }
-    const groupSize = Math.min(4, students.length);
     const assigned = queue.slice(0, groupSize);
     const remaining = queue.slice(groupSize);
     const newHistory = { ...(dutyState.history || {}), [date]: assigned };
@@ -209,10 +221,23 @@ export function AppDataProvider({ children }) {
 
   const rerollDutyForDate = useCallback(async (date) => {
     const currentAssigned = (dutyState.history && dutyState.history[date]) || [];
-    const queue = [...currentAssigned, ...(dutyState.queue || [])];
-    const newHistory = { ...(dutyState.history || {}) };
-    delete newHistory[date];
-    await saveItem('duty', 'main', { history: newHistory, queue, cycleNumber: dutyState.cycleNumber || 0 });
+    const pool = [...currentAssigned, ...(dutyState.queue || [])];
+    const groupSize = Math.min(4, pool.length);
+    const sameGroup = (a, b) => a.length === b.length && a.every((id) => b.includes(id));
+
+    let assigned = shuffleArray(pool);
+    for (let attempt = 0; attempt < 5 && pool.length > groupSize
+      && sameGroup(assigned.slice(0, groupSize), currentAssigned); attempt += 1) {
+      assigned = shuffleArray(pool);
+    }
+
+    const newAssigned = assigned.slice(0, groupSize);
+    const remaining = assigned.slice(groupSize);
+    const newHistory = { ...(dutyState.history || {}), [date]: newAssigned };
+    await saveItem('duty', 'main', {
+      history: newHistory, queue: remaining, cycleNumber: dutyState.cycleNumber || 0,
+    });
+    return newAssigned;
   }, [dutyState]);
 
   const addQuiz = useCallback(async (quizData) => {
@@ -262,6 +287,21 @@ export function AppDataProvider({ children }) {
     await removeItem('evaluations', id);
   }, []);
 
+  const addPost = useCallback(async (postData) => {
+    const id = generateId('post');
+    await saveItem('posts', id, {
+      title: postData.title || '',
+      content: postData.content,
+      authorName: postData.authorName || '',
+      createdAt: new Date().toISOString(),
+    });
+    return id;
+  }, []);
+
+  const deletePost = useCallback(async (id) => {
+    await removeItem('posts', id);
+  }, []);
+
   const backupAllData = useCallback(async () => {
     const result = {};
     for (const name of COLLECTIONS) {
@@ -289,6 +329,7 @@ export function AppDataProvider({ children }) {
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
+    posts, addPost, deletePost,
     settings, updateSettings,
     backupAllData, restoreAllData, clearAllData,
   }), [
@@ -299,6 +340,7 @@ export function AppDataProvider({ children }) {
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
+    posts, addPost, deletePost,
     settings, updateSettings, backupAllData, restoreAllData, clearAllData,
   ]);
 

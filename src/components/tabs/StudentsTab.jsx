@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Plus, Upload, Trash2, Pencil, Users as UsersIcon, Camera, ClipboardList, Shuffle,
+  Plus, Upload, Trash2, Pencil, Users as UsersIcon, Camera, ClipboardList, Shuffle, KeyRound, Copy, Check,
 } from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 import Card from '../common/Card';
@@ -8,6 +8,7 @@ import Avatar from '../common/Avatar';
 import Modal from '../common/Modal';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { parsePastedStudentList, resizeImageFile, todayISO, GROUP_COLORS } from '../../utils/helpers';
+import { hashPassword, suggestUsername, generatePin } from '../../utils/auth';
 const GROUPS = ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'];
 
 export default function StudentsTab() {
@@ -20,11 +21,16 @@ export default function StudentsTab() {
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [editingStudent, setEditingStudent] = useState(null);
   const [deletingStudent, setDeletingStudent] = useState(null);
+  const [accountStudent, setAccountStudent] = useState(null);
+  const [accountForm, setAccountForm] = useState({ username: '', password: '' });
+  const [savedPassword, setSavedPassword] = useState(null);
+  const [copied, setCopied] = useState(false);
   const [filterGroup, setFilterGroup] = useState('Tất cả');
   const [todayDuty, setTodayDuty] = useState(null);
   const [loadingDuty, setLoadingDuty] = useState(false);
 
-  const [form, setForm] = useState({ name: '', group: 'Tổ 1', gender: 'Nam', avatar: '' });
+  const [form, setForm] = useState({ name: '', group: 'Tổ 1', gender: 'Nam', avatar: '', username: '', password: '' });
+  const [addError, setAddError] = useState('');
   const [bulkText, setBulkText] = useState('');
   const [bulkPreview, setBulkPreview] = useState([]);
 
@@ -43,8 +49,18 @@ export default function StudentsTab() {
   }, [today, students.length]);
 
   const handleOpenAdd = () => {
-    setForm({ name: '', group: 'Tổ 1', gender: 'Nam', avatar: '' });
+    setForm({ name: '', group: 'Tổ 1', gender: 'Nam', avatar: '', username: '', password: generatePin() });
+    setAddError('');
     setShowAddModal(true);
+  };
+
+  const handleSuggestUsernameForAdd = () => {
+    const existing = students.map((s) => s.username).filter(Boolean);
+    setForm((f) => ({ ...f, username: suggestUsername(f.name || 'hoc sinh', existing) }));
+  };
+
+  const handleGeneratePasswordForAdd = () => {
+    setForm((f) => ({ ...f, password: generatePin() }));
   };
 
     const handleAvatarPick = async (e, callback) => {
@@ -56,12 +72,33 @@ export default function StudentsTab() {
 
   const handleSubmitAdd = async (e) => {
     e.preventDefault();
+    setAddError('');
     if (!form.name.trim()) return;
-    const id = await addStudent({ name: form.name.trim(), group: form.group, gender: form.gender });
+    const username = form.username.trim().toLowerCase();
+    if (!username) {
+      setAddError('Hãy nhập tên đăng nhập cho học sinh.');
+      return;
+    }
+    if (!form.password.trim()) {
+      setAddError('Hãy đặt mật khẩu cho học sinh.');
+      return;
+    }
+    const duplicate = students.some((s) => s.username?.toLowerCase() === username);
+    if (duplicate) {
+      setAddError('Tên đăng nhập này đã được dùng cho học sinh khác. Hãy chọn tên khác.');
+      return;
+    }
+    const passwordHash = await hashPassword(form.password.trim());
+    const id = await addStudent({
+      name: form.name.trim(), group: form.group, gender: form.gender, username, passwordHash,
+    });
     if (form.avatar) {
       await setStudentAvatar(id, form.avatar);
     }
     setShowAddModal(false);
+    setAccountStudent({ id, name: form.name.trim() });
+    setAccountForm({ username, password: form.password.trim() });
+    setSavedPassword(form.password.trim());
   };
 
   const handleOpenEdit = (student) => {
@@ -94,10 +131,57 @@ export default function StudentsTab() {
 
   const handleReroll = async () => {
     setLoadingDuty(true);
-    await rerollDutyForDate(today);
-    const assigned = await assignDutyForDate(today);
+    const assigned = await rerollDutyForDate(today);
     setTodayDuty(assigned);
     setLoadingDuty(false);
+  };
+
+  const handleOpenAccount = (student) => {
+    setAccountStudent(student);
+    setAccountForm({ username: student.username || '', password: '' });
+    setSavedPassword(null);
+    setCopied(false);
+  };
+
+  const handleSuggestUsername = () => {
+    if (!accountStudent) return;
+    const existing = students.filter((s) => s.id !== accountStudent.id).map((s) => s.username).filter(Boolean);
+    setAccountForm((f) => ({ ...f, username: suggestUsername(accountStudent.name, existing) }));
+  };
+
+  const handleGeneratePassword = () => {
+    setAccountForm((f) => ({ ...f, password: generatePin() }));
+  };
+
+  const handleSaveAccount = async () => {
+    if (!accountStudent || !accountForm.username.trim()) return;
+    const username = accountForm.username.trim().toLowerCase();
+    const duplicate = students.some((s) => s.id !== accountStudent.id && s.username?.toLowerCase() === username);
+    if (duplicate) {
+      alert('Tên đăng nhập này đã được dùng cho học sinh khác. Hãy chọn tên khác.');
+      return;
+    }
+    if (!accountStudent.passwordHash && !accountForm.password.trim()) {
+      alert('Hãy đặt mật khẩu cho tài khoản mới này.');
+      return;
+    }
+    const update = { username };
+    if (accountForm.password.trim()) {
+      update.passwordHash = await hashPassword(accountForm.password.trim());
+    }
+    await updateStudent(accountStudent.id, update);
+    if (accountForm.password.trim()) {
+      setSavedPassword(accountForm.password.trim());
+    } else {
+      setAccountStudent(null);
+    }
+  };
+
+  const handleCopyAccountInfo = async () => {
+    if (!accountStudent || !savedPassword) return;
+    const text = `Tên đăng nhập: ${accountForm.username}\nMật khẩu: ${savedPassword}`;
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
   };
 
   const filteredStudents = filterGroup === 'Tất cả'
@@ -195,6 +279,14 @@ export default function StudentsTab() {
             <div className="flex gap-1 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
               <button
                 type="button"
+                onClick={() => handleOpenAccount(student)}
+                className="p-1.5 bg-happy-pink/20 text-happy-pink rounded-full hover:bg-happy-pink/30"
+                title="Tài khoản đăng nhập"
+              >
+                <KeyRound size={13} />
+              </button>
+              <button
+                type="button"
                 onClick={() => handleOpenEdit(student)}
                 className="p-1.5 bg-blue-100 text-happy-blue rounded-full hover:bg-blue-200"
               >
@@ -210,6 +302,9 @@ export default function StudentsTab() {
             </div>
             <Avatar name={student.name} src={student.avatar} size="lg" className="mt-6" />
             <p className="font-bold text-gray-700 mt-1">{student.name}</p>
+            <p className="text-xs text-gray-400">
+              {student.username ? `🔑 ${student.username}` : 'Chưa có tài khoản'}
+            </p>
           </Card>
         ))}
       </div>
@@ -264,6 +359,50 @@ export default function StudentsTab() {
               </select>
             </div>
           </div>
+
+          <div className="pt-2 border-t border-gray-100 space-y-3">
+            <p className="text-sm font-bold text-happy-pink">Tài khoản đăng nhập cho học sinh</p>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Tên đăng nhập</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  value={form.username}
+                  onChange={(e) => setForm((f) => ({ ...f, username: e.target.value }))}
+                  placeholder="vd: an123"
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-100 focus:border-happy-pink outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSuggestUsernameForAdd}
+                  className="px-3 rounded-xl bg-pink-50 text-happy-pink font-semibold text-sm hover:bg-pink-100 whitespace-nowrap"
+                >
+                  Gợi ý
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Mật khẩu</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  value={form.password}
+                  onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Mật khẩu"
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-100 focus:border-happy-pink outline-none font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleGeneratePasswordForAdd}
+                  className="px-3 rounded-xl bg-pink-50 text-happy-pink font-semibold text-sm hover:bg-pink-100 whitespace-nowrap"
+                >
+                  Tạo mã
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {addError && <p className="text-sm text-red-500 font-medium">{addError}</p>}
           <button type="submit" className="w-full py-3 bg-happy-blue text-white rounded-xl font-bold hover:bg-blue-600">
             Thêm học sinh
           </button>
@@ -360,6 +499,90 @@ export default function StudentsTab() {
             Nhập {bulkPreview.length} học sinh vào lớp
           </button>
         </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!accountStudent}
+        onClose={() => setAccountStudent(null)}
+        title={`Tài khoản đăng nhập: ${accountStudent?.name || ''}`}
+      >
+        {savedPassword ? (
+          <div className="space-y-4 text-center">
+            <div className="w-14 h-14 mx-auto rounded-full bg-green-100 flex items-center justify-center">
+              <Check size={28} className="text-happy-green" />
+            </div>
+            <p className="text-gray-600">Đã lưu tài khoản! Hãy ghi lại thông tin dưới đây để cung cấp cho học sinh — hệ thống sẽ không hiển thị lại mật khẩu này.</p>
+            <div className="bg-pink-50 rounded-2xl p-4 text-left space-y-1">
+              <p className="font-semibold text-gray-700">Tên đăng nhập: <span className="font-mono">{accountForm.username}</span></p>
+              <p className="font-semibold text-gray-700">Mật khẩu: <span className="font-mono">{savedPassword}</span></p>
+            </div>
+            <button
+              type="button"
+              onClick={handleCopyAccountInfo}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200"
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />} {copied ? 'Đã sao chép' : 'Sao chép thông tin'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setAccountStudent(null)}
+              className="w-full py-3 bg-happy-pink text-white rounded-xl font-bold hover:bg-pink-600"
+            >
+              Xong
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-semibold text-gray-600">Tên đăng nhập</label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  value={accountForm.username}
+                  onChange={(e) => setAccountForm((f) => ({ ...f, username: e.target.value }))}
+                  placeholder="vd: an123"
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-100 focus:border-happy-pink outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={handleSuggestUsername}
+                  className="px-3 rounded-xl bg-pink-50 text-happy-pink font-semibold text-sm hover:bg-pink-100 whitespace-nowrap"
+                >
+                  Gợi ý
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-600">
+                {accountStudent?.passwordHash ? 'Mật khẩu mới (bỏ trống nếu không đổi)' : 'Mật khẩu'}
+              </label>
+              <div className="flex gap-2 mt-1">
+                <input
+                  type="text"
+                  value={accountForm.password}
+                  onChange={(e) => setAccountForm((f) => ({ ...f, password: e.target.value }))}
+                  placeholder="Mật khẩu"
+                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-100 focus:border-happy-pink outline-none font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={handleGeneratePassword}
+                  className="px-3 rounded-xl bg-pink-50 text-happy-pink font-semibold text-sm hover:bg-pink-100 whitespace-nowrap"
+                >
+                  Tạo mã
+                </button>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveAccount}
+              disabled={!accountForm.username.trim()}
+              className="w-full py-3 bg-happy-pink text-white rounded-xl font-bold hover:bg-pink-600 disabled:opacity-40"
+            >
+              Lưu tài khoản
+            </button>
+          </div>
+        )}
       </Modal>
 
       <ConfirmDialog

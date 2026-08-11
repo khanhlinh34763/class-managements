@@ -7,6 +7,7 @@ import AdminLogin from './components/auth/AdminLogin';
 import StudentPortal from './components/student/StudentPortal';
 import Sidebar from './components/layout/Sidebar';
 import Navbar from './components/layout/Navbar';
+import HomeTab from './components/tabs/HomeTab';
 import DashboardTab from './components/tabs/DashboardTab';
 import StudentsTab from './components/tabs/StudentsTab';
 import AttendanceTab from './components/tabs/AttendanceTab';
@@ -16,6 +17,7 @@ import QuizTab from './components/tabs/QuizTab';
 import DataTab from './components/tabs/DataTab';
 
 const TAB_COMPONENTS = {
+  home: HomeTab,
   dashboard: DashboardTab,
   students: StudentsTab,
   attendance: AttendanceTab,
@@ -27,18 +29,18 @@ const TAB_COMPONENTS = {
 
 function AdminShell() {
   const { logout } = useAuth();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('home');
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const ActiveComponent = TAB_COMPONENTS[activeTab] || DashboardTab;
+  const ActiveComponent = TAB_COMPONENTS[activeTab] || HomeTab;
 
   return (
     <AppDataProvider>
-      <div className="h-screen w-screen flex bg-blue-50/40 overflow-hidden">
+      <div className="h-screen w-screen flex bg-pink-50/40 overflow-hidden">
         <Sidebar
           activeTab={activeTab}
           onChangeTab={setActiveTab}
           onLogout={logout}
-          className="hidden md:flex w-64 shrink-0 border-r border-blue-50"
+          className="hidden md:flex w-64 shrink-0 border-r border-pink-100"
         />
         {sidebarOpen && (
           <div className="fixed inset-0 z-40 md:hidden">

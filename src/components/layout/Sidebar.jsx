@@ -1,9 +1,10 @@
 import React from 'react';
 import {
-  LayoutDashboard, Users, ClipboardCheck, Trophy, Wand2, FileQuestion, Database, Sun,
+  Home, LayoutDashboard, Users, ClipboardCheck, Trophy, Wand2, FileQuestion, Database, Sun, LogOut,
 } from 'lucide-react';
 
 const MENU_ITEMS = [
+  { key: 'home', label: 'Trang chủ', icon: Home },
   { key: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
   { key: 'students', label: 'Học sinh', icon: Users },
   { key: 'attendance', label: 'Điểm danh', icon: ClipboardCheck },
@@ -13,15 +14,19 @@ const MENU_ITEMS = [
   { key: 'data', label: 'Dữ liệu & Báo cáo', icon: Database },
 ];
 
-export default function Sidebar({ activeTab, onChangeTab, className = '', onNavigate }) {
+export default function Sidebar({
+  activeTab, onChangeTab, className = '', onNavigate, onLogout,
+}) {
   return (
     <aside className={`bg-white flex flex-col ${className}`}>
-      <div className="flex items-center gap-3 px-6 py-6 border-b border-blue-50">
-        <div className="w-11 h-11 bg-gradient-to-br from-happy-yellow to-happy-orange rounded-2xl flex items-center justify-center shadow-md">
+      <div className="flex items-center gap-3 px-6 py-6 border-b border-pink-100">
+        <div className="w-11 h-11 bg-gradient-to-br from-happy-pink to-pink-300 rounded-2xl flex items-center justify-center shadow-md">
           <Sun size={24} className="text-white" />
         </div>
         <div>
-          <p className="font-extrabold text-gray-800 leading-tight">Lớp học cô Linh</p>
+          <p className="font-extrabold text-gray-800 leading-tight flex items-center gap-1">
+            Lớp học cô Linh <span className="text-base">🌸</span>
+          </p>
           <p className="text-xs text-gray-400 font-medium">Lớp học hạnh phúc</p>
         </div>
       </div>
@@ -36,8 +41,8 @@ export default function Sidebar({ activeTab, onChangeTab, className = '', onNavi
               onClick={() => { onChangeTab(item.key); if (onNavigate) onNavigate(); }}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm transition-all ${
                 isActive
-                  ? 'bg-happy-blue text-white shadow-lg shadow-blue-200 scale-[1.02]'
-                  : 'text-gray-500 hover:bg-blue-50 hover:text-happy-blue'
+                  ? 'bg-happy-pink text-white shadow-lg shadow-pink-200 scale-[1.02]'
+                  : 'text-gray-500 hover:bg-pink-50 hover:text-happy-pink'
               }`}
             >
               <Icon size={20} />
@@ -46,7 +51,16 @@ export default function Sidebar({ activeTab, onChangeTab, className = '', onNavi
           );
         })}
       </nav>
-      <div className="px-6 py-4 border-t border-blue-50 text-xs text-gray-400 text-center">
+      <div className="px-3 pb-2">
+        <button
+          type="button"
+          onClick={onLogout}
+          className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl font-semibold text-sm text-red-400 hover:bg-red-50 transition-colors"
+        >
+          <LogOut size={20} /> Đăng xuất
+        </button>
+      </div>
+      <div className="px-6 py-4 border-t border-pink-100 text-xs text-gray-400 text-center">
         © {new Date().getFullYear()} - Lớp học hạnh phúc
       </div>
     </aside>
