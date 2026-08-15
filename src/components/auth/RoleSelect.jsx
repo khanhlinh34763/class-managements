@@ -15,7 +15,6 @@ export default function RoleSelect({ onSelectRole }) {
           <h1 className="text-3xl font-extrabold text-gray-800">Lớp học cô Linh 🌸</h1>
           <p className="text-gray-400 font-medium">Lớp học hạnh phúc — Bạn là ai?</p>
         </div>
-        <ClassActivityFeed className="text-left" />
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <button
             type="button"
@@ -40,6 +39,7 @@ export default function RoleSelect({ onSelectRole }) {
             <p className="text-sm text-gray-400">Chọn tên và làm bài trắc nghiệm</p>
           </button>
         </div>
+        <ClassActivityFeed className="text-left" />
       </div>
     </div>
   );

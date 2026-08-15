@@ -3,9 +3,12 @@ import { Menu, Cloud, Sparkles } from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 import { MENU_ITEMS } from './Sidebar';
 
-export default function Navbar({ activeTab, onOpenSidebar }) {
+export default function Navbar({ activeTab, onOpenSidebar, currentStudent = null }) {
   const { settings } = useAppData();
   const current = MENU_ITEMS.find((item) => item.key === activeTab);
+  const subtitle = currentStudent
+    ? `${settings.className} • Học sinh: ${currentStudent.name}`
+    : `${settings.className} • GVCN: ${settings.teacherName}`;
 
   return (
     <header className="bg-white border-b border-pink-100 px-4 md:px-8 py-4 flex items-center justify-between gap-4">
@@ -23,7 +26,7 @@ export default function Navbar({ activeTab, onOpenSidebar }) {
             <Sparkles size={18} className="text-happy-yellow" />
           </h1>
           <p className="text-sm text-gray-400 font-medium hidden md:block">
-            {settings.className} • GVCN: {settings.teacherName}
+            {subtitle}
           </p>
         </div>
       </div>

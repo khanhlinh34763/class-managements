@@ -37,3 +37,53 @@ body {
   display: inline-block;
   filter: drop-shadow(0 4px 6px rgba(255, 105, 180, 0.15));
 }
+
+/* Nội dung soạn thảo có định dạng (câu trả lời tự luận) */
+.rich-content h1 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  margin: 0.5rem 0;
+  line-height: 1.3;
+}
+.rich-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0.4rem 0;
+  line-height: 1.3;
+}
+.rich-content h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0.35rem 0;
+  line-height: 1.3;
+}
+.rich-content p {
+  margin: 0.25rem 0;
+}
+.rich-content ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+.rich-content ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.25rem 0;
+}
+.rich-content strong,
+.rich-content b {
+  font-weight: 700;
+}
+.rich-content em,
+.rich-content i {
+  font-style: italic;
+}
+.rich-content a {
+  color: #4D96FF;
+  text-decoration: underline;
+}
+.rich-content:empty::before {
+  content: attr(data-placeholder);
+  color: #9CA3AF;
+  pointer-events: none;
+}

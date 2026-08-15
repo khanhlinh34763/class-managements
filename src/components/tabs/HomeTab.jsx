@@ -14,8 +14,9 @@ function stickerFor(id) {
   return STICKERS[hash % STICKERS.length];
 }
 
-export default function HomeTab() {
+export default function HomeTab({ role = 'admin' }) {
   const { posts, addPost, deletePost, settings } = useAppData();
+  const isStudent = role === 'student';
   const [showCreate, setShowCreate] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -55,13 +56,15 @@ export default function HomeTab() {
         <h3 className="font-bold text-gray-700 text-lg flex items-center gap-2">
           <Home size={20} className="text-happy-pink" /> Hoạt động của lớp
         </h3>
-        <button
-          type="button"
-          onClick={() => { setError(''); setShowCreate(true); }}
-          className="flex items-center gap-2 bg-happy-pink text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-pink-600"
-        >
-          <Plus size={16} /> Đăng hoạt động
-        </button>
+        {!isStudent && (
+          <button
+            type="button"
+            onClick={() => { setError(''); setShowCreate(true); }}
+            className="flex items-center gap-2 bg-happy-pink text-white px-4 py-2 rounded-xl font-semibold text-sm hover:bg-pink-600"
+          >
+            <Plus size={16} /> Đăng hoạt động
+          </button>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -78,13 +81,15 @@ export default function HomeTab() {
                     {post.authorName ? `${post.authorName} • ` : ''}{formatDateVN(post.createdAt)}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setDeletingPost(post)}
-                  className="p-2 rounded-full bg-red-50 text-red-400 hover:bg-red-100 shrink-0"
-                >
-                  <Trash2 size={15} />
-                </button>
+                {!isStudent && (
+                  <button
+                    type="button"
+                    onClick={() => setDeletingPost(post)}
+                    className="p-2 rounded-full bg-red-50 text-red-400 hover:bg-red-100 shrink-0"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                )}
               </div>
               <p className="text-gray-600 mt-2 whitespace-pre-wrap break-words">{post.content}</p>
             </div>

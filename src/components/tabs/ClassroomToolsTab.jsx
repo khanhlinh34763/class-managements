@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Shuffle, Play, Pause, RotateCcw, Timer, Users2, User, LayoutGrid } from 'lucide-react';
+import {
+  Shuffle, Play, Pause, RotateCcw, Timer, Users2, User, LayoutGrid, Volume2, Mic, MicOff,
+} from 'lucide-react';
 import { useAppData } from '../../context/AppDataContext';
 import Card from '../common/Card';
 import Avatar from '../common/Avatar';
@@ -285,6 +287,184 @@ function CountdownTimer() {
   );
 }
 
+function noiseZone(level, threshold) {
+  if (level >= threshold) {
+    return {
+      key: 'loud', color: '#FF6B6B', ring: '#FF6B6B', face: '🤫',
+      label: 'Ồn quá rồi! Cả lớp trật tự nào!', text: 'text-red-500',
+    };
+  }
+  if (level >= threshold * 0.6) {
+    return {
+      key: 'medium', color: '#FFB03A', ring: '#FFB03A', face: '🙂',
+      label: 'Hơi ồn một chút nhé!', text: 'text-happy-orange',
+    };
+  }
+  return {
+    key: 'quiet', color: '#6BCB77', ring: '#6BCB77', face: '😌',
+    label: 'Lớp mình rất trật tự! Giỏi lắm!', text: 'text-happy-green',
+  };
+}
+
+function NoiseMeter() {
+  const [listening, setListening] = useState(false);
+  const [level, setLevel] = useState(0);
+  const [peak, setPeak] = useState(0);
+  const [threshold, setThreshold] = useState(65);
+  const [error, setError] = useState('');
+
+  const streamRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const analyserRef = useRef(null);
+  const rafRef = useRef(null);
+  const smoothRef = useRef(0);
+  const thresholdRef = useRef(threshold);
+
+  useEffect(() => { thresholdRef.current = threshold; }, [threshold]);
+
+  const stop = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = null;
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((t) => t.stop());
+      streamRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close();
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+    smoothRef.current = 0;
+    setListening(false);
+    setLevel(0);
+  }, []);
+
+  const start = useCallback(async () => {
+    setError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError('Trình duyệt không hỗ trợ truy cập micro.');
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      audioCtxRef.current = ctx;
+      const source = ctx.createMediaStreamSource(stream);
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 1024;
+      source.connect(analyser);
+      analyserRef.current = analyser;
+      const data = new Uint8Array(analyser.fftSize);
+      setListening(true);
+      setPeak(0);
+
+      const loop = () => {
+        analyser.getByteTimeDomainData(data);
+        let sumSquares = 0;
+        for (let i = 0; i < data.length; i += 1) {
+          const val = (data[i] - 128) / 128;
+          sumSquares += val * val;
+        }
+        const rms = Math.sqrt(sumSquares / data.length);
+        // Chuyển RMS sang thang 0-100 cho dễ đọc trong lớp học
+        const raw = Math.min(100, Math.round(rms * 300));
+        smoothRef.current = smoothRef.current * 0.8 + raw * 0.2;
+        const smooth = Math.round(smoothRef.current);
+        setLevel(smooth);
+        setPeak((p) => (smooth > p ? smooth : p));
+        rafRef.current = requestAnimationFrame(loop);
+      };
+      loop();
+    } catch (err) {
+      if (err && err.name === 'NotAllowedError') {
+        setError('Bạn cần cho phép truy cập micro để đo tiếng ồn.');
+      } else {
+        setError('Không thể truy cập micro. Vui lòng kiểm tra thiết bị.');
+      }
+      stop();
+    }
+  }, [stop]);
+
+  useEffect(() => () => stop(), [stop]);
+
+  const zone = noiseZone(level, threshold);
+  const circumference = 2 * Math.PI * 45;
+
+  return (
+    <Card className="flex flex-col items-center gap-5 py-10">
+      <div className="flex items-center gap-2 text-gray-700 font-bold text-lg">
+        <Volume2 size={22} className="text-happy-green" /> Bộ đo tiếng ồn
+      </div>
+
+      <div className="relative w-52 h-52">
+        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="45" fill="none" stroke="#F3F4F6" strokeWidth="8" />
+          <circle
+            cx="50" cy="50" r="45" fill="none"
+            stroke={zone.ring}
+            strokeWidth="8"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference * (1 - level / 100)}
+            strokeLinecap="round"
+            className="transition-all duration-150 ease-out"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className={`text-5xl ${zone.key === 'loud' ? 'animate-bounce-slow' : ''}`}>{zone.face}</span>
+          <span className="text-3xl font-extrabold text-gray-700 mt-1">{level}</span>
+        </div>
+      </div>
+
+      <p className={`font-bold text-center min-h-[1.5rem] ${listening ? zone.text : 'text-gray-400'}`}>
+        {listening ? zone.label : 'Bấm "Bắt đầu đo" để lắng nghe lớp học'}
+      </p>
+
+      {listening && (
+        <p className="text-xs text-gray-400 font-semibold">Mức ồn cao nhất: {peak}</p>
+      )}
+
+      <div className="w-full max-w-xs flex items-center gap-3">
+        <span className="text-xs font-semibold text-gray-500 shrink-0">Ngưỡng ồn</span>
+        <input
+          type="range"
+          min="20"
+          max="100"
+          value={threshold}
+          onChange={(e) => setThreshold(parseInt(e.target.value, 10))}
+          className="flex-1 accent-happy-green"
+        />
+        <span className="text-sm font-bold text-gray-600 w-8 text-right">{threshold}</span>
+      </div>
+
+      {error && <p className="text-sm text-red-500 font-medium text-center">{error}</p>}
+
+      <div className="flex gap-3">
+        {!listening ? (
+          <button
+            type="button"
+            onClick={start}
+            className="flex items-center gap-2 bg-happy-green text-white px-6 py-3 rounded-2xl font-bold hover:bg-green-600"
+          >
+            <Mic size={18} /> Bắt đầu đo
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={stop}
+            className="flex items-center gap-2 bg-red-400 text-white px-6 py-3 rounded-2xl font-bold hover:bg-red-500"
+          >
+            <MicOff size={18} /> Dừng lại
+          </button>
+        )}
+      </div>
+      <p className="text-xs text-gray-400 text-center max-w-xs">
+        Âm thanh chỉ được xử lý ngay trên máy để hiển thị mức ồn, không ghi âm hay gửi đi bất kỳ đâu.
+      </p>
+    </Card>
+  );
+}
+
 export default function ClassroomToolsTab() {
   const [activeTool, setActiveTool] = useState('random');
 
@@ -305,8 +485,17 @@ export default function ClassroomToolsTab() {
         >
           Đồng hồ đếm ngược
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTool('noise')}
+          className={`px-5 py-2.5 rounded-xl font-semibold text-sm ${activeTool === 'noise' ? 'bg-happy-green text-white' : 'bg-white text-gray-500'}`}
+        >
+          Đo tiếng ồn
+        </button>
       </div>
-      {activeTool === 'random' ? <RandomPicker /> : <CountdownTimer />}
+      {activeTool === 'random' && <RandomPicker />}
+      {activeTool === 'timer' && <CountdownTimer />}
+      {activeTool === 'noise' && <NoiseMeter />}
     </div>
   );
 }

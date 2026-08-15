@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Home, LayoutDashboard, Users, ClipboardCheck, Trophy, Wand2, FileQuestion, Database, Sun, LogOut,
+  Home, LayoutDashboard, Users, ClipboardCheck, Trophy, Wand2, FileQuestion, CalendarCheck, Database, Sun, LogOut,
 } from 'lucide-react';
 
 const MENU_ITEMS = [
@@ -11,12 +11,20 @@ const MENU_ITEMS = [
   { key: 'emulation', label: 'Thi đua', icon: Trophy },
   { key: 'tools', label: 'Công cụ lớp học', icon: Wand2 },
   { key: 'quiz', label: 'Trắc nghiệm', icon: FileQuestion },
+  { key: 'periodic', label: 'Đánh giá định kì', icon: CalendarCheck },
   { key: 'data', label: 'Dữ liệu & Báo cáo', icon: Database },
 ];
 
+// Học sinh chỉ thấy 4 mục này
+const STUDENT_KEYS = ['home', 'dashboard', 'students', 'quiz'];
+
 export default function Sidebar({
-  activeTab, onChangeTab, className = '', onNavigate, onLogout,
+  activeTab, onChangeTab, className = '', onNavigate, onLogout, role = 'admin',
 }) {
+  const menuItems = role === 'student'
+    ? MENU_ITEMS.filter((item) => STUDENT_KEYS.includes(item.key))
+    : MENU_ITEMS;
+
   return (
     <aside className={`bg-white flex flex-col ${className}`}>
       <div className="flex items-center gap-3 px-6 py-6 border-b border-pink-100">
@@ -31,7 +39,7 @@ export default function Sidebar({
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {MENU_ITEMS.map((item) => {
+        {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.key;
           return (

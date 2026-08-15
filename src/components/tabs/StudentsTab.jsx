@@ -11,11 +11,12 @@ import { parsePastedStudentList, resizeImageFile, todayISO, GROUP_COLORS } from 
 import { hashPassword, suggestUsername, generatePin } from '../../utils/auth';
 const GROUPS = ['Tổ 1', 'Tổ 2', 'Tổ 3', 'Tổ 4'];
 
-export default function StudentsTab() {
+export default function StudentsTab({ role = 'admin' }) {
   const {
     students, addStudent, addStudentsBulk, updateStudent, deleteStudent, setStudentAvatar,
     dutyState, assignDutyForDate, rerollDutyForDate,
   } = useAppData();
+  const isStudent = role === 'student';
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -37,6 +38,8 @@ export default function StudentsTab() {
   const today = todayISO();
 
   useEffect(() => {
+    // Học sinh chỉ xem, không tự tạo/ghi phân công trực nhật
+    if (isStudent) return undefined;
     let active = true;
     setLoadingDuty(true);
     assignDutyForDate(today).then((assigned) => {
@@ -46,7 +49,11 @@ export default function StudentsTab() {
       }
     });
     return () => { active = false; };
-  }, [today, students.length]);
+  }, [today, students.length, isStudent]);
+
+  // Với học sinh: đọc trực tiếp phân công hôm nay từ dữ liệu đã đồng bộ (reactive)
+  const dutyList = isStudent ? (dutyState.history?.[today] || []) : todayDuty;
+  const dutyLoading = isStudent ? false : loadingDuty;
 
   const handleOpenAdd = () => {
     setForm({ name: '', group: 'Tổ 1', gender: 'Nam', avatar: '', username: '', password: generatePin() });
@@ -196,20 +203,24 @@ export default function StudentsTab() {
             <ClipboardList size={22} />
             <h3 className="font-bold text-lg">Trực nhật hôm nay</h3>
           </div>
-          <button
-            type="button"
-            onClick={handleReroll}
-            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
-          >
-            <Shuffle size={16} /> Random lại
-          </button>
+          {!isStudent && (
+            <button
+              type="button"
+              onClick={handleReroll}
+              className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-xl font-semibold text-sm transition-colors"
+            >
+              <Shuffle size={16} /> Random lại
+            </button>
+          )}
         </div>
         <div className="flex flex-wrap gap-3 mt-4">
-          {loadingDuty && <p className="text-white/80">Đang tạo phân công...</p>}
-          {!loadingDuty && todayDuty && todayDuty.length === 0 && (
-            <p className="text-white/80">Lớp chưa có học sinh để phân công</p>
+          {dutyLoading && <p className="text-white/80">Đang tạo phân công...</p>}
+          {!dutyLoading && dutyList && dutyList.length === 0 && (
+            <p className="text-white/80">
+              {isStudent ? 'Hôm nay chưa có phân công trực nhật' : 'Lớp chưa có học sinh để phân công'}
+            </p>
           )}
-          {!loadingDuty && todayDuty && todayDuty.map((sid) => {
+          {!dutyLoading && dutyList && dutyList.map((sid) => {
             const s = students.find((st) => st.id === sid);
             if (!s) return null;
             return (
@@ -225,6 +236,8 @@ export default function StudentsTab() {
         </p>
       </Card>
 
+      {!isStudent && (
+      <>
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 flex-wrap">
           <button
@@ -594,6 +607,8 @@ export default function StudentsTab() {
         confirmText="Xoá"
         danger
       />
+      </>
+      )}
     </div>
   );
 }

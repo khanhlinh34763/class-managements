@@ -7,12 +7,13 @@ import Card from '../common/Card';
 import ConfirmDialog from '../common/ConfirmDialog';
 import { exportToCSV } from '../../utils/csv';
 import { downloadFile, todayISO } from '../../utils/helpers';
+import { periodLabel, levelInfo } from '../../utils/evaluationTemplates';
 
 const RATINGS = ['Hoàn thành tốt', 'Hoàn thành', 'Chưa hoàn thành'];
 
 export default function DataTab() {
   const {
-    students, settings, evaluations, addEvaluation, attendance, emulation,
+    students, settings, evaluations, addEvaluation, attendance, emulation, periodicEvals,
     backupAllData, restoreAllData, clearAllData,
   } = useAppData();
 
@@ -78,6 +79,23 @@ export default function DataTab() {
       });
     });
     exportToCSV(`diemdanh_${todayISO()}.csv`, headers, rows);
+  };
+
+  const handleExportPeriodicEvals = () => {
+    const headers = ['Họ và tên', 'Kì đánh giá', 'Môn học', 'Mức', 'Nhận xét', 'Năm học', 'Ngày'];
+    const rows = periodicEvals.map((ev) => {
+      const student = students.find((s) => s.id === ev.studentId);
+      return [
+        student ? student.name : 'Không rõ',
+        periodLabel(ev.period),
+        ev.subject,
+        `${ev.level} - ${levelInfo(ev.level).label}`,
+        ev.comment,
+        ev.schoolYear || '',
+        ev.date,
+      ];
+    });
+    exportToCSV(`danhgia_dinhki_${todayISO()}.csv`, headers, rows);
   };
 
   const handleExportEmulation = () => {
@@ -224,6 +242,13 @@ export default function DataTab() {
               className="flex items-center gap-2 bg-white border-2 border-happy-orange text-happy-orange px-4 py-3 rounded-xl font-semibold hover:bg-orange-50"
             >
               <FileSpreadsheet size={18} /> Báo cáo đánh giá môn học
+            </button>
+            <button
+              type="button"
+              onClick={handleExportPeriodicEvals}
+              className="flex items-center gap-2 bg-white border-2 border-happy-pink text-happy-pink px-4 py-3 rounded-xl font-semibold hover:bg-pink-50"
+            >
+              <FileSpreadsheet size={18} /> Báo cáo đánh giá định kì
             </button>
           </div>
         </Card>

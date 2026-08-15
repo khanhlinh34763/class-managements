@@ -12,7 +12,7 @@ import {
 const AppDataContext = createContext(null);
 
 export const COLLECTIONS = [
-  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations', 'settings', 'posts',
+  'students', 'attendance', 'emulation', 'duty', 'quizzes', 'quizResults', 'evaluations', 'periodicEvals', 'settings', 'posts',
 ];
 
 const DEFAULT_SETTINGS = {
@@ -20,8 +20,8 @@ const DEFAULT_SETTINGS = {
   teacherName: 'Cô Linh',
   schoolYear: '2026 - 2027',
   subjects: [
-    'Toán', 'Tiếng Việt', 'Đạo đức', 'Tự nhiên và Xã hội',
-    'Mĩ thuật', 'Âm nhạc', 'Thể dục', 'Tin học', 'Tiếng Anh',
+    'Toán', 'Tiếng Việt', 'Khoa học', 'Lịch sử Địa lý',
+    'Hoạt động trải nghiệm', 'Đạo đức',
   ],
 };
 
@@ -33,6 +33,7 @@ export function AppDataProvider({ children }) {
   const [quizzes, setQuizzes] = useState([]);
   const [quizResults, setQuizResults] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
+  const [periodicEvals, setPeriodicEvals] = useState([]);
   const [posts, setPosts] = useState([]);
   const [settingsDoc, setSettingsDoc] = useState(null);
   const [settingsLoaded, setSettingsLoaded] = useState(false);
@@ -46,6 +47,7 @@ export function AppDataProvider({ children }) {
       subscribe('quizzes', setQuizzes),
       subscribe('quizResults', setQuizResults),
       subscribe('evaluations', setEvaluations),
+      subscribe('periodicEvals', setPeriodicEvals),
       subscribe('posts', setPosts),
       subscribe('settings', (docsArr) => {
         setSettingsDoc(docsArr.find((d) => d.id === 'main') || null);
@@ -61,7 +63,9 @@ export function AppDataProvider({ children }) {
     }
   }, [settingsLoaded, settingsDoc]);
 
-  const settings = settingsDoc ? { ...DEFAULT_SETTINGS, ...settingsDoc } : DEFAULT_SETTINGS;
+  const settings = settingsDoc
+    ? { ...DEFAULT_SETTINGS, ...settingsDoc, subjects: DEFAULT_SETTINGS.subjects }
+    : DEFAULT_SETTINGS;
 
   const updateSettings = useCallback(async (newSettings) => {
     await saveItem('settings', 'main', newSettings);
@@ -258,10 +262,13 @@ export function AppDataProvider({ children }) {
     await removeItem('quizzes', id);
   }, []);
 
-  const submitQuizResult = useCallback(async (quizId, studentName, score, total, answers) => {
+  const submitQuizResult = useCallback(async ({
+    quizId, studentId, studentName, score, total, answers,
+  }) => {
     const id = generateId('qr');
     await saveItem('quizResults', id, {
       quizId,
+      studentId: studentId || '',
       studentName,
       score,
       total,
@@ -285,6 +292,32 @@ export function AppDataProvider({ children }) {
 
   const deleteEvaluation = useCallback(async (id) => {
     await removeItem('evaluations', id);
+  }, []);
+
+  const savePeriodicEval = useCallback(async ({
+    studentId, period, subject, level, comment,
+  }) => {
+    // Mỗi học sinh - kì - môn chỉ có một bản đánh giá; ghi đè nếu đã tồn tại
+    const existing = periodicEvals.find(
+      (p) => p.studentId === studentId && p.period === period && p.subject === subject,
+    );
+    const id = existing ? existing.id : generateId('pev');
+    await saveItem('periodicEvals', id, {
+      studentId,
+      period,
+      subject,
+      level,
+      comment: comment || '',
+      schoolYear: settings.schoolYear,
+      date: todayISO(),
+      createdAt: existing ? existing.createdAt : new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    return id;
+  }, [periodicEvals, settings.schoolYear]);
+
+  const deletePeriodicEval = useCallback(async (id) => {
+    await removeItem('periodicEvals', id);
   }, []);
 
   const addPost = useCallback(async (postData) => {
@@ -329,6 +362,7 @@ export function AppDataProvider({ children }) {
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
+    periodicEvals, savePeriodicEval, deletePeriodicEval,
     posts, addPost, deletePost,
     settings, updateSettings,
     backupAllData, restoreAllData, clearAllData,
@@ -340,6 +374,7 @@ export function AppDataProvider({ children }) {
     quizzes, addQuiz, updateQuiz, deleteQuiz,
     quizResults, submitQuizResult,
     evaluations, addEvaluation, deleteEvaluation,
+    periodicEvals, savePeriodicEval, deletePeriodicEval,
     posts, addPost, deletePost,
     settings, updateSettings, backupAllData, restoreAllData, clearAllData,
   ]);

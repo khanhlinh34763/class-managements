@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// Quy tắc bảo mật Firestore cho ứng dụng "Lớp học cô Linh".
+//
+// Mô hình: dữ liệu lớp học hiển thị realtime cho bất kỳ ai có đường link
+// (giống ghi chú trong tab "Dữ liệu & Báo cáo"), nên cho phép ĐỌC công khai.
+// GHI thì giới hạn: học sinh (chưa đăng nhập Firebase) chỉ được nộp bài
+// trắc nghiệm và nhận sao thi đua; các thao tác còn lại cần giáo viên đăng nhập.
+//
+// Cách áp dụng:
+//   - Firebase Console > Firestore Database > Rules > dán nội dung này > Publish
+//   - hoặc dùng Firebase CLI: firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Ai cũng đọc được toàn bộ dữ liệu lớp học (hiển thị realtime cho học sinh)
+    match /{document=**} {
+      allow read: if true;
+    }
+
+    // Học sinh làm bài: được ghi kết quả và điểm thi đua (5 sao/bài)
+    match /quizResults/{docId} {
+      allow write: if true;
+    }
+    match /emulation/{docId} {
+      allow write: if true;
+    }
+
+    // Các collection còn lại: chỉ giáo viên đã đăng nhập mới được ghi
+    match /students/{docId}      { allow write: if request.auth != null; }
+    match /attendance/{docId}    { allow write: if request.auth != null; }
+    match /duty/{docId}          { allow write: if request.auth != null; }
+    match /quizzes/{docId}       { allow write: if request.auth != null; }
+    match /evaluations/{docId}   { allow write: if request.auth != null; }
+    match /periodicEvals/{docId} { allow write: if request.auth != null; }
+    match /settings/{docId}      { allow write: if request.auth != null; }
+    match /posts/{docId}         { allow write: if request.auth != null; }
+  }
+}

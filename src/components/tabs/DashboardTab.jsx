@@ -5,9 +5,9 @@ import Card, { StatCard } from '../common/Card';
 import Avatar from '../common/Avatar';
 import { todayISO, getWeekKey, formatDateVN, GROUP_COLORS } from '../../utils/helpers';
 
-export default function DashboardTab() {
+export default function DashboardTab({ role = 'admin', currentStudent = null }) {
   const {
-    students, getAttendanceForDate, emulation, getWeeklyRanking, getGroupRanking,
+    students, settings, getAttendanceForDate, emulation, getWeeklyRanking, getGroupRanking,
   } = useAppData();
   const today = todayISO();
   const weekKey = getWeekKey(new Date());
@@ -33,7 +33,11 @@ export default function DashboardTab() {
       <Card className="bg-gradient-to-r from-happy-pink to-pink-400 text-white flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="text-pink-100 font-medium">{formatDateVN(new Date())}</p>
-          <h2 className="text-2xl font-extrabold mt-1">Chào mừng cô Linh quay lại! 🌸</h2>
+          <h2 className="text-2xl font-extrabold mt-1">
+            {role === 'student' && currentStudent
+              ? `Chào ${currentStudent.name}! 🌸`
+              : `Chào mừng ${settings.teacherName} quay lại! 🌸`}
+          </h2>
         </div>
       </Card>
 

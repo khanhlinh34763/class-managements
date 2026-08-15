@@ -2,6 +2,34 @@ export function generateId(prefix = 'id') {
   return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 }
 
+// Làm sạch HTML soạn thảo (câu trả lời tự luận) trước khi hiển thị để tránh XSS
+const ALLOWED_TAGS = new Set([
+  'H1', 'H2', 'H3', 'P', 'BR', 'DIV', 'SPAN', 'UL', 'OL', 'LI', 'STRONG', 'B', 'EM', 'I', 'U',
+]);
+
+export function sanitizeRichHtml(html) {
+  if (!html || typeof document === 'undefined') return '';
+  const template = document.createElement('template');
+  template.innerHTML = html;
+  const walk = (node) => {
+    const children = Array.from(node.childNodes);
+    children.forEach((child) => {
+      if (child.nodeType === 1) {
+        if (!ALLOWED_TAGS.has(child.tagName)) {
+          // Thay thẻ không cho phép bằng nội dung text của nó
+          child.replaceWith(document.createTextNode(child.textContent || ''));
+          return;
+        }
+        // Xoá mọi thuộc tính (kể cả on*, style, href) cho an toàn
+        Array.from(child.attributes).forEach((attr) => child.removeAttribute(attr.name));
+        walk(child);
+      }
+    });
+  };
+  walk(template.content);
+  return template.innerHTML;
+}
+
 export function formatDateVN(date) {
   const d = new Date(date);
   const dayNames = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
